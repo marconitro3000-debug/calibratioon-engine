@@ -172,6 +172,12 @@ Your other project only needs to provide:
 
 OpenAlphaLab handles trial generation, failure capture, ranking, result tables and reports.
 
+## Security Model
+
+This project is an offline Python library. It does not start servers, open ports, expose a public HTTP API, call remote APIs, require API keys or execute shell commands from user inputs.
+
+See `SECURITY.md` for the full safety model.
+
 For portfolio risk workflows, pass JSON/CSV files directly:
 
 ```python

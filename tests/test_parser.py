@@ -26,8 +26,17 @@ def test_parser_expands_adv_tokens():
 
 def test_parser_does_not_expose_builtins():
     data = make_data()
-    with pytest.raises(NameError):
+    with pytest.raises((NameError, ValueError)):
         AlphaParser().evaluate("__import__('os').system('echo unsafe')", data)
+
+
+def test_parser_blocks_attribute_and_subscript_access():
+    data = make_data()
+    parser = AlphaParser()
+    with pytest.raises(ValueError):
+        parser.evaluate("close.__class__", data)
+    with pytest.raises(ValueError):
+        parser.evaluate("close['A0']", data)
 
 
 def test_engine_metrics_contract():
