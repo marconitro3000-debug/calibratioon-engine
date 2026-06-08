@@ -89,12 +89,7 @@ class CalibrationResult:
 
 
 class CalibrationEngine:
-    """Generic parameter calibration engine for reusable model tuning.
-
-    The objective callback receives `(params, data)` and can return either:
-    - a float score;
-    - a dict containing `score` and any extra metrics.
-    """
+    """Offline parameter calibration engine for reusable model tuning."""
 
     def __init__(self, *, seed: int = 42):
         self.seed = seed

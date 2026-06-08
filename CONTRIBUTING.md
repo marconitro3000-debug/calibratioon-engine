@@ -1,6 +1,6 @@
 # Contributing
 
-OpenAlphaLab is intended to be a usable research engine, not only a notebook demo. Contributions should keep the package importable, tested and explainable.
+Calibration Engine should stay small, offline and reusable.
 
 ## Local Setup
 
@@ -10,36 +10,19 @@ python -m pip install -e ".[dev]"
 
 ## Checks
 
-Run these before opening a PR or pushing a meaningful change:
-
 ```bash
 python -m ruff check .
 python -m black --check .
-python -m mypy src/alpha_lab
-python -m pytest
+python -m mypy src/calibration_engine
+python -m pytest -q
 ```
 
-If pre-commit is installed:
+## Rules
 
-```bash
-pre-commit install
-pre-commit run --all-files
-```
-
-## Engineering Rules
-
-- Keep the top-level API stable: `from alpha_lab import AutoAlphaResearchEngine`.
-- Prefer vectorized pandas operations for operators and backtests.
-- Avoid look-ahead bias: trading positions must be delayed before applying returns.
-- Costs must be based on turnover, not on return magnitude.
-- Calibration should optimize robust fitness, not only in-sample Sharpe.
-- Add tests for parser behavior, operator shape/alignment, backtest timing and alpha book selection.
-- Document research assumptions in `research/` when adding new methodology.
-
-## Release Checklist
-
-1. Bump the version in `pyproject.toml`.
-2. Run all checks.
-3. Confirm examples still run.
-4. Update `README.md` if the public API changed.
-5. Tag the release after CI passes.
+- Keep the public API importable from `calibration_engine`.
+- Do not add network calls.
+- Do not add servers or ports.
+- Do not read credentials or `.env` files.
+- Do not execute shell commands from user inputs.
+- Keep optimizers deterministic when a seed is provided.
+- Add tests for new optimizers, result formats or calibration behavior.

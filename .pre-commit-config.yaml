@@ -17,4 +17,4 @@ repos:
         additional_dependencies:
           - numpy>=1.23
           - pandas>=1.5
-        args: [src/alpha_lab]
+        args: [src/calibration_engine]

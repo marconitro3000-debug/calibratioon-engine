@@ -33,7 +33,7 @@ jobs:
         run: python -m black --check .
 
       - name: Type check
-        run: python -m mypy src/alpha_lab
+        run: python -m mypy src/calibration_engine
 
       - name: Tests
         run: python -m pytest

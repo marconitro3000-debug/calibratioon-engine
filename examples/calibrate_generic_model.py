@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from alpha_lab import CalibrationEngine
+from calibration_engine import CalibrationEngine
 
 
 def make_training_csv(path: Path) -> None:

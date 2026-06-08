@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from alpha_lab import CalibrationEngine, calibrate_model
+from calibration_engine import CalibrationEngine, calibrate_model
 
 
 def make_data():
