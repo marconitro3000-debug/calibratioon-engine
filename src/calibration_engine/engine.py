@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
@@ -30,6 +32,18 @@ class CalibrationResult:
     trials: list[CalibrationTrial]
     direction: ObjectiveDirection
     optimizer: str
+
+    @property
+    def n_trials(self) -> int:
+        return len(self.trials)
+
+    @property
+    def failed_trials(self) -> list[CalibrationTrial]:
+        return [trial for trial in self.trials if trial.status != "ok"]
+
+    @property
+    def ok_trials(self) -> list[CalibrationTrial]:
+        return [trial for trial in self.trials if trial.status == "ok"]
 
     def to_frame(self) -> pd.DataFrame:
         rows = []
@@ -64,6 +78,37 @@ class CalibrationResult:
             ],
         }
 
+    def save_json(self, path: str | Path) -> None:
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
+
+    def save_csv(self, path: str | Path) -> None:
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_frame().to_csv(output_path, index=False)
+
+    @classmethod
+    def load_json(cls, path: str | Path) -> CalibrationResult:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        return cls(
+            best_params=payload["best_params"],
+            best_score=float(payload["best_score"]),
+            best_metrics=payload.get("best_metrics", {}),
+            trials=[
+                CalibrationTrial(
+                    params=trial["params"],
+                    score=float(trial["score"]),
+                    metrics=trial.get("metrics", {}),
+                    status=trial.get("status", "ok"),
+                    error=trial.get("error"),
+                )
+                for trial in payload.get("trials", [])
+            ],
+            direction=payload["direction"],
+            optimizer=payload["optimizer"],
+        )
+
     def report(self, top_n: int = 5) -> str:
         lines = [
             "# Calibration Report",
@@ -72,6 +117,8 @@ class CalibrationResult:
             f"Direction: `{self.direction}`",
             f"Best score: `{self.best_score:.6f}`",
             f"Best params: `{self.best_params}`",
+            f"Trials: `{self.n_trials}`",
+            f"Failed trials: `{len(self.failed_trials)}`",
             "",
             "## Best Metrics",
         ]

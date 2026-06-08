@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from calibration_engine import CalibrationEngine, calibrate_model
+from calibration_engine import CalibrationEngine, CalibrationResult, calibrate_model
 
 
 def make_data():
@@ -60,3 +60,24 @@ def test_calibration_records_failed_trials():
 
     assert result.best_params == {"x": 3}
     assert any(trial.status == "error" for trial in result.trials)
+
+
+def test_calibration_result_saves_json_and_csv(tmp_path):
+    result = CalibrationEngine().calibrate(
+        linear_objective,
+        {"slope": [2.0, 3.0], "intercept": [2.0]},
+        data=make_data(),
+        optimizer="grid",
+    )
+
+    json_path = tmp_path / "result.json"
+    csv_path = tmp_path / "trials.csv"
+    result.save_json(json_path)
+    result.save_csv(csv_path)
+    loaded = CalibrationResult.load_json(json_path)
+
+    assert loaded.best_params == result.best_params
+    assert loaded.best_score == result.best_score
+    assert loaded.n_trials == result.n_trials
+    assert csv_path.read_text(encoding="utf-8").startswith("param_slope")
+    assert "Failed trials" in result.report()

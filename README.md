@@ -39,6 +39,9 @@ result = CalibrationEngine(seed=7).calibrate(
 print(result.best_params)
 print(result.best_metrics)
 print(result.report())
+
+result.save_json("calibration_result.json")
+result.save_csv("calibration_trials.csv")
 ```
 
 ## What It Provides
@@ -49,6 +52,7 @@ print(result.report())
 - `CalibrationTrial`: one evaluated parameter set.
 - Optimizers: `grid`, `random`, `auto`.
 - Result export via `to_dict()` and `to_frame()`.
+- Local persistence via `save_json()`, `load_json()` and `save_csv()`.
 - Markdown report via `report()`.
 
 ## Parameter Spaces
