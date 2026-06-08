@@ -1,6 +1,6 @@
 # OpenAlphaLab V3
 
-OpenAlphaLab is a public Python package for formulaic alpha research, calibration, validation, rejection and alpha book construction.
+OpenAlphaLab is a public Python package for reusable parameter calibration, formulaic alpha research, validation and reporting.
 
 It is not affiliated with WorldQuant, Jane Street, Citadel or any private platform. The goal is to implement an open, reproducible version of the alpha research workflow:
 
@@ -18,6 +18,37 @@ formula / model hypothesis
 ```
 
 ## Core API
+
+Generic model calibration:
+
+```python
+from alpha_lab import CalibrationEngine
+
+
+def objective(params, data):
+    prediction = params["slope"] * data["x"] + params["intercept"]
+    rmse = ((data["y"] - prediction) ** 2).mean() ** 0.5
+    return {"score": -rmse, "rmse": rmse}
+
+
+result = CalibrationEngine(seed=7).calibrate(
+    objective,
+    param_space={
+        "slope": (0.0, 5.0),
+        "intercept": (-2.0, 8.0),
+    },
+    data=training_dataframe,
+    optimizer="random",
+    max_evals=200,
+    direction="maximize",
+)
+
+print(result.best_params)
+print(result.best_metrics)
+print(result.report())
+```
+
+Alpha research:
 
 ```python
 from alpha_lab import AutoAlphaResearchEngine
@@ -89,6 +120,7 @@ OpenAlphaLab should reject weak alphas, not just find high in-sample Sharpe. The
 ```bash
 pip install -e ".[dev]"
 python examples/test_single_alpha.py
+python examples/calibrate_generic_model.py
 python examples/calibrate_alpha_template.py
 python examples/build_alpha_book.py
 python -m pytest
@@ -129,8 +161,16 @@ python -m pip install git+https://github.com/marconitro3000-debug/calibratioon-e
 Then import it normally:
 
 ```python
-from alpha_lab import AutoAlphaResearchEngine
+from alpha_lab import CalibrationEngine
 ```
+
+Your other project only needs to provide:
+
+- a parameter space;
+- a function that scores one parameter set;
+- optional data, usually a DataFrame, dict, CSV-loaded table or model object.
+
+OpenAlphaLab handles trial generation, failure capture, ranking, result tables and reports.
 
 For portfolio risk workflows, pass JSON/CSV files directly:
 
