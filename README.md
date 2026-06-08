@@ -132,6 +132,55 @@ Then import it normally:
 from alpha_lab import AutoAlphaResearchEngine
 ```
 
+For portfolio risk workflows, pass JSON/CSV files directly:
+
+```python
+from alpha_lab import analyze_portfolio_risk
+
+result = analyze_portfolio_risk(
+    holdings="portfolio_holdings.json",
+    prices="historical_prices.csv",
+    benchmark="SPY",
+)
+
+print(result.metrics)
+print(result.warnings)
+print(result.report())
+```
+
+Supported holdings formats:
+
+```json
+{
+  "holdings": [
+    {"symbol": "AAPL", "market_value": 12000},
+    {"symbol": "MSFT", "market_value": 8000}
+  ]
+}
+```
+
+or CSV:
+
+```csv
+symbol,market_value
+AAPL,12000
+MSFT,8000
+```
+
+Supported price CSV format:
+
+```csv
+date,AAPL,MSFT,SPY
+2024-01-01,184.2,372.1,474.0
+2024-01-02,185.0,370.8,475.2
+```
+
+Run the demo:
+
+```bash
+python examples/analyze_portfolio_risk.py
+```
+
 ## Project Quality Bar
 
 A change is considered ready when:
