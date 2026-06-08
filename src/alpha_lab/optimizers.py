@@ -1,5 +1,6 @@
 import itertools
 import random
+
 import numpy as np
 
 
@@ -13,7 +14,7 @@ def expand_grid(param_space: dict):
         else:
             vals.append(list(v))
     for combo in itertools.product(*vals):
-        yield dict(zip(keys, combo))
+        yield dict(zip(keys, combo, strict=False))
 
 
 def sample_random(param_space: dict, n: int, seed: int = 42):

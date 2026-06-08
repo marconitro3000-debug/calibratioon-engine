@@ -1,6 +1,6 @@
+from .api import build_alpha_book, calibrate_alpha, test_alpha
 from .engine import AutoAlphaResearchEngine, ResearchEngine
-from .api import test_alpha, calibrate_alpha, build_alpha_book
-from .result import AlphaResult, AlphaBook
+from .result import AlphaBook, AlphaResult
 
 __all__ = [
     "AutoAlphaResearchEngine",

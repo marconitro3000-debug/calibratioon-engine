@@ -1,5 +1,7 @@
 import re
+
 import numpy as np
+
 from . import operators as ops
 
 _ALLOWED = {
@@ -43,7 +45,7 @@ class AlphaParser:
         def adv(n: int):
             if "volume" not in data:
                 raise KeyError("adv(n) requires data['volume']")
-            return data["volume"].rolling(int(n), min_periods=max(2, int(n)//3)).mean()
+            return data["volume"].rolling(int(n), min_periods=max(2, int(n) // 3)).mean()
 
         def group_neutralize(x):
             return ops.group_neutralize(x, groups=groups)

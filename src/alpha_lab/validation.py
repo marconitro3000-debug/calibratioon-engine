@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Fold:
     train_start: int
@@ -23,8 +24,8 @@ def walk_forward_folds(n_obs: int, train_window: int = 252, test_window: int = 6
 
 def apply_fold(df, fold: Fold, part="test"):
     if part == "train":
-        return df.iloc[fold.train_start:fold.train_end]
-    return df.iloc[fold.test_start:fold.test_end]
+        return df.iloc[fold.train_start : fold.train_end]
+    return df.iloc[fold.test_start : fold.test_end]
 
 
 def slice_data(data: dict, fold: Fold, part="test"):

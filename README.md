@@ -93,3 +93,51 @@ python examples/calibrate_alpha_template.py
 python examples/build_alpha_book.py
 python -m pytest
 ```
+
+## Development Workflow
+
+Install the project in editable mode with development tools:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Run the local quality gate:
+
+```bash
+python -m ruff check .
+python -m black --check .
+python -m mypy src/alpha_lab
+python -m pytest
+```
+
+Optional pre-commit setup:
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+## Use From Another Project
+
+Install from GitHub:
+
+```bash
+python -m pip install git+https://github.com/marconitro3000-debug/calibratioon-engine.git
+```
+
+Then import it normally:
+
+```python
+from alpha_lab import AutoAlphaResearchEngine
+```
+
+## Project Quality Bar
+
+A change is considered ready when:
+
+- The public API stays importable from `alpha_lab`.
+- Examples run with synthetic data.
+- `python -m pytest` passes.
+- CI passes lint, format, type-check and tests.
+- New research logic includes tests or a documented reason why it is exploratory.

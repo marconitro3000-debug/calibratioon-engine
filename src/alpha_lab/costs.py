@@ -1,7 +1,9 @@
 import pandas as pd
 
 
-def transaction_costs(positions: pd.DataFrame, *, commission_bps=0.0, slippage_bps=0.0, spread_bps=0.0, borrow_bps=0.0) -> pd.Series:
+def transaction_costs(
+    positions: pd.DataFrame, *, commission_bps=0.0, slippage_bps=0.0, spread_bps=0.0, borrow_bps=0.0
+) -> pd.Series:
     turnover = positions.diff().abs().sum(axis=1).fillna(0.0)
     trading_bps = float(commission_bps) + float(slippage_bps) + float(spread_bps)
     trading_cost = turnover * trading_bps / 10000.0

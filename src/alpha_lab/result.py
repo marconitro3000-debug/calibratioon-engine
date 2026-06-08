@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
+
 import pandas as pd
+
 
 @dataclass
 class AlphaResult:
@@ -18,7 +20,7 @@ class AlphaResult:
 
     def report(self) -> str:
         lines = [
-            f"# Alpha Research Report",
+            "# Alpha Research Report",
             "",
             f"Verdict: **{self.verdict}**",
             f"Formula: `{self.best_formula}`",
@@ -40,6 +42,7 @@ class AlphaResult:
             for k, v in self.diagnostics.items():
                 lines.append(f"- {k}: {v}")
         return "\n".join(lines)
+
 
 @dataclass
 class AlphaBook:

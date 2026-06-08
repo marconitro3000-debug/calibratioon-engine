@@ -13,7 +13,13 @@ license = {text="MIT"}
 dependencies = ["numpy>=1.23", "pandas>=1.5"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+dev = [
+    "black>=24.0",
+    "mypy>=1.8",
+    "pre-commit>=3.6",
+    "pytest>=7",
+    "ruff>=0.4",
+]
 
 [project.scripts]
 open-alpha-lab = "alpha_lab.cli:main"
@@ -24,3 +30,26 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests", "examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = [
+    "E501",  # Black owns line wrapping.
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_configs = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+no_implicit_optional = true

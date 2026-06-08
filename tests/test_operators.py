@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from alpha_lab.operators import rank, delta, ts_mean, scale
+
+from alpha_lab.operators import delta, rank, scale, ts_mean
 
 
 def test_basic_operators_shape():

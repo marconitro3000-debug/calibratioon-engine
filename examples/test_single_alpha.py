@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+
 from alpha_lab import AutoAlphaResearchEngine
 
 rng = np.random.default_rng(1)

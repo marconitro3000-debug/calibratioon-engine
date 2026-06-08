@@ -1,10 +1,13 @@
 import numpy as np
 import pandas as pd
-from .operators import scale, winsorize, neutralize, group_neutralize, decay_linear
+
 from .costs import transaction_costs
+from .operators import decay_linear, group_neutralize, neutralize, scale, winsorize
 
 
-def signal_to_positions(signal: pd.DataFrame, *, delay_periods=1, neutralization=None, groups=None, gross=1.0, cap=None, decay=1) -> pd.DataFrame:
+def signal_to_positions(
+    signal: pd.DataFrame, *, delay_periods=1, neutralization=None, groups=None, gross=1.0, cap=None, decay=1
+) -> pd.DataFrame:
     sig = signal.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     sig = winsorize(sig, 0.02)
     if neutralization:
@@ -20,11 +23,30 @@ def signal_to_positions(signal: pd.DataFrame, *, delay_periods=1, neutralization
     return pos
 
 
-def backtest_alpha(signal: pd.DataFrame, data: dict, *, costs=None, neutralization=None, groups=None, delay_periods=1, gross=1.0, cap=None, decay=1):
+def backtest_alpha(
+    signal: pd.DataFrame,
+    data: dict,
+    *,
+    costs=None,
+    neutralization=None,
+    groups=None,
+    delay_periods=1,
+    gross=1.0,
+    cap=None,
+    decay=1,
+):
     if "close" not in data:
         raise KeyError("data must contain 'close'")
     fwd_ret = data["close"].pct_change().replace([np.inf, -np.inf], np.nan).fillna(0.0)
-    positions = signal_to_positions(signal, delay_periods=delay_periods, neutralization=neutralization, groups=groups, gross=gross, cap=cap, decay=decay)
+    positions = signal_to_positions(
+        signal,
+        delay_periods=delay_periods,
+        neutralization=neutralization,
+        groups=groups,
+        gross=gross,
+        cap=cap,
+        decay=decay,
+    )
     asset_pnl = positions.shift(1).fillna(0.0) * fwd_ret
     gross_returns = asset_pnl.sum(axis=1).fillna(0.0)
     costs = costs or {}

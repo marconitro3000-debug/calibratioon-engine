@@ -39,33 +39,35 @@ def returns(x: pd.DataFrame, n: int = 1) -> pd.DataFrame:
 
 
 def ts_mean(x: pd.DataFrame, n: int) -> pd.DataFrame:
-    return _as_df(x).rolling(int(n), min_periods=max(2, int(n)//3)).mean()
+    return _as_df(x).rolling(int(n), min_periods=max(2, int(n) // 3)).mean()
 
 
 def ts_std(x: pd.DataFrame, n: int) -> pd.DataFrame:
-    return _as_df(x).rolling(int(n), min_periods=max(2, int(n)//3)).std()
+    return _as_df(x).rolling(int(n), min_periods=max(2, int(n) // 3)).std()
 
 
 def ts_min(x: pd.DataFrame, n: int) -> pd.DataFrame:
-    return _as_df(x).rolling(int(n), min_periods=max(2, int(n)//3)).min()
+    return _as_df(x).rolling(int(n), min_periods=max(2, int(n) // 3)).min()
 
 
 def ts_max(x: pd.DataFrame, n: int) -> pd.DataFrame:
-    return _as_df(x).rolling(int(n), min_periods=max(2, int(n)//3)).max()
+    return _as_df(x).rolling(int(n), min_periods=max(2, int(n) // 3)).max()
 
 
 def ts_rank(x: pd.DataFrame, n: int) -> pd.DataFrame:
     x = _as_df(x)
     n = int(n)
-    return x.rolling(n, min_periods=max(2, n//3)).apply(lambda a: pd.Series(a).rank(pct=True).iloc[-1] - 0.5, raw=False)
+    return x.rolling(n, min_periods=max(2, n // 3)).apply(
+        lambda a: pd.Series(a).rank(pct=True).iloc[-1] - 0.5, raw=False
+    )
 
 
 def ts_corr(x: pd.DataFrame, y: pd.DataFrame, n: int) -> pd.DataFrame:
-    return _as_df(x).rolling(int(n), min_periods=max(3, int(n)//3)).corr(_as_df(y))
+    return _as_df(x).rolling(int(n), min_periods=max(3, int(n) // 3)).corr(_as_df(y))
 
 
 def ts_cov(x: pd.DataFrame, y: pd.DataFrame, n: int) -> pd.DataFrame:
-    return _as_df(x).rolling(int(n), min_periods=max(3, int(n)//3)).cov(_as_df(y))
+    return _as_df(x).rolling(int(n), min_periods=max(3, int(n) // 3)).cov(_as_df(y))
 
 
 def decay_linear(x: pd.DataFrame, n: int) -> pd.DataFrame:
@@ -73,7 +75,9 @@ def decay_linear(x: pd.DataFrame, n: int) -> pd.DataFrame:
     n = int(n)
     weights = np.arange(1, n + 1, dtype=float)
     weights /= weights.sum()
-    return x.rolling(n, min_periods=max(2, n//3)).apply(lambda a: np.dot(a[-len(weights):], weights[-len(a):]), raw=True)
+    return x.rolling(n, min_periods=max(2, n // 3)).apply(
+        lambda a: np.dot(a[-len(weights) :], weights[-len(a) :]), raw=True
+    )
 
 
 def signed_power(x: pd.DataFrame, p: float) -> pd.DataFrame:
@@ -98,7 +102,7 @@ def group_neutralize(x: pd.DataFrame, groups: dict | None = None) -> pd.DataFram
     if not groups:
         return neutralize(x)
     out = x.copy()
-    by_group = {}
+    by_group: dict[str, list[str]] = {}
     for asset in x.columns:
         by_group.setdefault(groups.get(asset, "__ungrouped__"), []).append(asset)
     for cols in by_group.values():

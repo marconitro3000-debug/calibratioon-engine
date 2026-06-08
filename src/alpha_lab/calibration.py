@@ -1,17 +1,26 @@
-import math
 import numpy as np
-from .parser import AlphaParser
+
 from .backtest import backtest_alpha
 from .metrics import summarize
-from .scoring import score_metrics
 from .optimizers import candidate_stream, genetic_candidates
-from .validation import walk_forward_folds, slice_data
-from .overfitting import parameter_stability, deflated_sharpe_proxy, pbo_proxy
+from .overfitting import deflated_sharpe_proxy, parameter_stability, pbo_proxy
+from .parser import AlphaParser
 from .result import AlphaResult
+from .scoring import score_metrics
+from .validation import slice_data, walk_forward_folds
 
 
 class AlphaCalibrator:
-    def __init__(self, *, costs=None, neutralization=None, groups=None, validation="walk_forward", objective="robust_fitness", seed=42):
+    def __init__(
+        self,
+        *,
+        costs=None,
+        neutralization=None,
+        groups=None,
+        validation="walk_forward",
+        objective="robust_fitness",
+        seed=42,
+    ):
         self.costs = costs or {}
         self.neutralization = neutralization or []
         self.groups = groups
@@ -22,7 +31,15 @@ class AlphaCalibrator:
 
     def evaluate_formula(self, formula: str, data: dict, *, decay=1, delay_periods=1):
         signal = self.parser.evaluate(formula, data, groups=self.groups)
-        bt = backtest_alpha(signal, data, costs=self.costs, neutralization=self.neutralization, groups=self.groups, decay=decay, delay_periods=delay_periods)
+        bt = backtest_alpha(
+            signal,
+            data,
+            costs=self.costs,
+            neutralization=self.neutralization,
+            groups=self.groups,
+            decay=decay,
+            delay_periods=delay_periods,
+        )
         metrics = summarize(bt, signal, data)
         score = score_metrics(metrics, self.objective)
         return signal, bt, metrics, score
@@ -39,7 +56,17 @@ class AlphaCalibrator:
                 out.append(({"net_sharpe": 0.0}, -1e9))
         return out
 
-    def calibrate(self, alpha_template: str, data: dict, param_space: dict, *, optimizer="auto", max_evals=500, min_sharpe=0.2, max_turnover=5.0):
+    def calibrate(
+        self,
+        alpha_template: str,
+        data: dict,
+        param_space: dict,
+        *,
+        optimizer="auto",
+        max_evals=500,
+        min_sharpe=0.2,
+        max_turnover=5.0,
+    ):
         records = []
 
         def eval_params(params):
@@ -109,7 +136,9 @@ class AlphaCalibrator:
             "fold_score_std": round(float(np.std(fold_scores)) if fold_scores else 0.0, 4),
         }
         metrics = dict(metrics)
-        metrics.update({"parameter_stability": stability, "deflated_sharpe_proxy": dsr, "pbo_proxy": pbo, "fitness": score})
+        metrics.update(
+            {"parameter_stability": stability, "deflated_sharpe_proxy": dsr, "pbo_proxy": pbo, "fitness": score}
+        )
         return AlphaResult(
             formula=alpha_template,
             best_formula=best_formula,
