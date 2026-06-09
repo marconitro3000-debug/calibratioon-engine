@@ -66,9 +66,7 @@ That is why `CalibrationResult` records metadata, trial status, JSON persistence
 
 ## Near-Term Roadmap
 
-1. Add an explicit `SearchSpace` object with validation.
-2. Add deterministic stratified random sampling for mixed discrete/continuous spaces.
-3. Add successive halving as the first budget-aware optimizer.
-4. Add callback hooks: `on_trial_start`, `on_trial_end`, `should_stop`.
-5. Add a compact experiment manifest file.
-6. Add examples for scikit-learn-style models without requiring scikit-learn as a dependency.
+1. Add deterministic stratified random sampling for mixed discrete/continuous spaces.
+2. Add successive halving as the first budget-aware optimizer.
+3. Add callback hooks: `on_trial_start`, `on_trial_end`, `should_stop`.
+4. Add examples for scikit-learn-style models without requiring scikit-learn as a dependency.

@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .optimizers import candidate_stream
+from .search_space import SearchSpace
 
 ObjectiveDirection = Literal["maximize", "minimize"]
 ObjectiveFn = Callable[[dict[str, Any], Any], float | dict[str, Any]]
@@ -183,7 +184,7 @@ class CalibrationEngine:
     def calibrate(
         self,
         objective: ObjectiveFn,
-        param_space: dict[str, Any],
+        param_space: dict[str, Any] | SearchSpace,
         *,
         data: Any = None,
         optimizer: str = "auto",
@@ -195,15 +196,14 @@ class CalibrationEngine:
     ) -> CalibrationResult:
         if direction not in {"maximize", "minimize"}:
             raise ValueError("direction must be 'maximize' or 'minimize'")
-        if not param_space:
-            raise ValueError("param_space cannot be empty")
+        search_space = SearchSpace.from_dict(param_space)
 
         default_fail_score = -np.inf if direction == "maximize" else np.inf
         fail_score = default_fail_score if fail_score is None else fail_score
         trials: list[CalibrationTrial] = []
         constraints = constraints or []
 
-        for params in candidate_stream(param_space, optimizer=optimizer, max_evals=max_evals, seed=self.seed):
+        for params in candidate_stream(search_space, optimizer=optimizer, max_evals=max_evals, seed=self.seed):
             params = dict(params)
             if not all(constraint(params) for constraint in constraints):
                 trials.append(
@@ -248,6 +248,7 @@ class CalibrationEngine:
                 "seed": self.seed,
                 "optimizer": optimizer,
                 "max_evals": max_evals,
+                "search_space": search_space.to_dict(),
                 "python_version": sys.version.split()[0],
                 "platform": platform.platform(),
                 **(metadata or {}),

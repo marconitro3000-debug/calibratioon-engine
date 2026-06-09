@@ -15,7 +15,7 @@ python -m pip install -e ".[dev]"
 ## Basic Usage
 
 ```python
-from calibration_engine import CalibrationEngine
+from calibration_engine import CalibrationEngine, SearchSpace
 
 
 def objective(params, data):
@@ -26,10 +26,10 @@ def objective(params, data):
 
 result = CalibrationEngine(seed=7).calibrate(
     objective,
-    param_space={
+    param_space=SearchSpace.from_dict({
         "slope": (0.0, 5.0),
         "intercept": (-2.0, 8.0),
-    },
+    }),
     data=training_dataframe,
     optimizer="random",
     max_evals=200,
@@ -52,6 +52,7 @@ result.save_csv("calibration_trials.csv")
 - `calibrate_model`: convenience function.
 - `CalibrationResult`: best params, best score, metrics, all trials.
 - `CalibrationTrial`: one evaluated parameter set.
+- `SearchSpace`: explicit, validated parameter-space manifest.
 - Optimizers: `grid`, `random`, `auto`.
 - Parameter constraints via `constraints=[...]`.
 - Reproducibility metadata: seed, optimizer, Python version, platform and user metadata.
@@ -94,6 +95,16 @@ Numeric ranges:
 ```
 
 Ranges are sampled for random search and expanded into a small fixed grid for grid search.
+
+For auditable runs, use an explicit `SearchSpace`:
+
+```python
+from calibration_engine import SearchSpace
+
+space = SearchSpace.from_dict({"depth": [2, 3, 4], "rate": (0.001, 0.1)})
+```
+
+The serialized search-space manifest is stored in `result.metadata`.
 
 ## Run Example
 
