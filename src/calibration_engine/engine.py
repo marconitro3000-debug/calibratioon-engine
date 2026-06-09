@@ -1,183 +1,21 @@
 from __future__ import annotations
 
-import json
 import platform
 import sys
-from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
-import pandas as pd
 
 from .optimizers import candidate_stream, expand_grid, sample_random
+from .result import CalibrationResult, CalibrationTrial, ObjectiveDirection
 from .search_space import SearchSpace
 
-ObjectiveDirection = Literal["maximize", "minimize"]
 ObjectiveFn = Callable[[dict[str, Any], Any], float | dict[str, Any]]
 ConstraintFn = Callable[[dict[str, Any]], bool]
 TrialStartCallback = Callable[[dict[str, Any]], None]
-
-
-@dataclass
-class CalibrationTrial:
-    params: dict[str, Any]
-    score: float
-    metrics: dict[str, Any] = field(default_factory=dict)
-    status: str = "ok"
-    error: str | None = None
-
-
 TrialEndCallback = Callable[[CalibrationTrial], None]
 StopCallback = Callable[[list[CalibrationTrial]], bool]
-
-
-@dataclass
-class CalibrationResult:
-    best_params: dict[str, Any]
-    best_score: float
-    best_metrics: dict[str, Any]
-    trials: list[CalibrationTrial]
-    direction: ObjectiveDirection
-    optimizer: str
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def n_trials(self) -> int:
-        return len(self.trials)
-
-    @property
-    def failed_trials(self) -> list[CalibrationTrial]:
-        return [trial for trial in self.trials if trial.status != "ok"]
-
-    @property
-    def ok_trials(self) -> list[CalibrationTrial]:
-        return [trial for trial in self.trials if trial.status == "ok"]
-
-    @property
-    def skipped_trials(self) -> list[CalibrationTrial]:
-        return [trial for trial in self.trials if trial.status == "skipped"]
-
-    def top_trials(self, n: int = 5) -> list[CalibrationTrial]:
-        return sorted(self.ok_trials, key=lambda trial: trial.score, reverse=self.direction == "maximize")[:n]
-
-    def summary(self) -> dict[str, Any]:
-        scores = pd.Series([trial.score for trial in self.ok_trials], dtype=float)
-        status_counts = dict(Counter(trial.status for trial in self.trials))
-        return {
-            "n_trials": self.n_trials,
-            "n_ok": len(self.ok_trials),
-            "n_failed": len(self.failed_trials),
-            "n_skipped": len(self.skipped_trials),
-            "status_counts": status_counts,
-            "best_score": self.best_score,
-            "score_mean": float(scores.mean()) if not scores.empty else None,
-            "score_std": float(scores.std()) if len(scores) > 1 else None,
-            "score_min": float(scores.min()) if not scores.empty else None,
-            "score_max": float(scores.max()) if not scores.empty else None,
-        }
-
-    def to_frame(self) -> pd.DataFrame:
-        rows = []
-        for trial in self.trials:
-            rows.append(
-                {
-                    **{f"param_{key}": value for key, value in trial.params.items()},
-                    **{f"metric_{key}": value for key, value in trial.metrics.items()},
-                    "score": trial.score,
-                    "status": trial.status,
-                    "error": trial.error,
-                }
-            )
-        return pd.DataFrame(rows)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "best_params": self.best_params,
-            "best_score": self.best_score,
-            "best_metrics": self.best_metrics,
-            "direction": self.direction,
-            "optimizer": self.optimizer,
-            "metadata": self.metadata,
-            "trials": [
-                {
-                    "params": trial.params,
-                    "score": trial.score,
-                    "metrics": trial.metrics,
-                    "status": trial.status,
-                    "error": trial.error,
-                }
-                for trial in self.trials
-            ],
-        }
-
-    def save_json(self, path: str | Path) -> None:
-        output_path = Path(path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
-
-    def save_csv(self, path: str | Path) -> None:
-        output_path = Path(path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        self.to_frame().to_csv(output_path, index=False)
-
-    @classmethod
-    def load_json(cls, path: str | Path) -> CalibrationResult:
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        return cls(
-            best_params=payload["best_params"],
-            best_score=float(payload["best_score"]),
-            best_metrics=payload.get("best_metrics", {}),
-            trials=[
-                CalibrationTrial(
-                    params=trial["params"],
-                    score=float(trial["score"]),
-                    metrics=trial.get("metrics", {}),
-                    status=trial.get("status", "ok"),
-                    error=trial.get("error"),
-                )
-                for trial in payload.get("trials", [])
-            ],
-            direction=payload["direction"],
-            optimizer=payload["optimizer"],
-            metadata=payload.get("metadata", {}),
-        )
-
-    def report(self, top_n: int = 5) -> str:
-        lines = [
-            "# Calibration Report",
-            "",
-            f"Optimizer: `{self.optimizer}`",
-            f"Direction: `{self.direction}`",
-            f"Best score: `{self.best_score:.6f}`",
-            f"Best params: `{self.best_params}`",
-            f"Trials: `{self.n_trials}`",
-            f"Failed trials: `{len(self.failed_trials)}`",
-            f"Skipped trials: `{len(self.skipped_trials)}`",
-            "",
-            "## Best Metrics",
-        ]
-        if self.best_metrics:
-            for key, value in self.best_metrics.items():
-                lines.append(f"- {key}: {value}")
-        else:
-            lines.append("- none")
-
-        lines += ["", "## Summary"]
-        for key, value in self.summary().items():
-            lines.append(f"- {key}: {value}")
-
-        if self.metadata:
-            lines += ["", "## Metadata"]
-            for key, value in self.metadata.items():
-                lines.append(f"- {key}: {value}")
-
-        lines += ["", f"## Top {top_n} Trials"]
-        for trial in self.top_trials(top_n):
-            lines.append(f"- score={trial.score:.6f}, params={trial.params}, status={trial.status}")
-        return "\n".join(lines)
 
 
 class CalibrationEngine:

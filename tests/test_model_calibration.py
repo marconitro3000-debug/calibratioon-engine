@@ -100,6 +100,7 @@ def test_calibration_supports_constraints_and_metadata():
     assert len(result.skipped_trials) == 3
     assert result.metadata["seed"] == 123
     assert result.metadata["experiment"] == "constraint-test"
+    assert result.summary()["n_failed"] == 0
     assert result.summary()["n_skipped"] == 3
     assert result.top_trials(1)[0].score == 6.0
 
@@ -125,6 +126,7 @@ def test_all_constraints_skipped_still_returns_auditable_result():
     )
 
     assert len(result.ok_trials) == 0
+    assert len(result.failed_trials) == 0
     assert len(result.skipped_trials) == 2
     assert result.best_params == {"x": 1}
 

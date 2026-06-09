@@ -9,7 +9,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from .engine import CalibrationEngine, CalibrationResult
+from .engine import CalibrationEngine
+from .result import CalibrationResult
 
 
 @dataclass(frozen=True)
