@@ -81,3 +81,23 @@ def test_calibration_result_saves_json_and_csv(tmp_path):
     assert loaded.n_trials == result.n_trials
     assert csv_path.read_text(encoding="utf-8").startswith("param_slope")
     assert "Failed trials" in result.report()
+
+
+def test_calibration_supports_constraints_and_metadata():
+    def objective(params, data):
+        return params["x"] + params["y"]
+
+    result = CalibrationEngine(seed=123).calibrate(
+        objective,
+        {"x": [1, 2, 3], "y": [1, 2, 3]},
+        optimizer="grid",
+        constraints=[lambda params: params["x"] <= params["y"]],
+        metadata={"experiment": "constraint-test"},
+    )
+
+    assert result.best_params == {"x": 3, "y": 3}
+    assert len(result.skipped_trials) == 3
+    assert result.metadata["seed"] == 123
+    assert result.metadata["experiment"] == "constraint-test"
+    assert result.summary()["n_skipped"] == 3
+    assert result.top_trials(1)[0].score == 6.0

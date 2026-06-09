@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import platform
+import sys
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +16,7 @@ from .optimizers import candidate_stream
 
 ObjectiveDirection = Literal["maximize", "minimize"]
 ObjectiveFn = Callable[[dict[str, Any], Any], float | dict[str, Any]]
+ConstraintFn = Callable[[dict[str, Any]], bool]
 
 
 @dataclass
@@ -32,6 +36,7 @@ class CalibrationResult:
     trials: list[CalibrationTrial]
     direction: ObjectiveDirection
     optimizer: str
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def n_trials(self) -> int:
@@ -44,6 +49,29 @@ class CalibrationResult:
     @property
     def ok_trials(self) -> list[CalibrationTrial]:
         return [trial for trial in self.trials if trial.status == "ok"]
+
+    @property
+    def skipped_trials(self) -> list[CalibrationTrial]:
+        return [trial for trial in self.trials if trial.status == "skipped"]
+
+    def top_trials(self, n: int = 5) -> list[CalibrationTrial]:
+        return sorted(self.ok_trials, key=lambda trial: trial.score, reverse=self.direction == "maximize")[:n]
+
+    def summary(self) -> dict[str, Any]:
+        scores = pd.Series([trial.score for trial in self.ok_trials], dtype=float)
+        status_counts = dict(Counter(trial.status for trial in self.trials))
+        return {
+            "n_trials": self.n_trials,
+            "n_ok": len(self.ok_trials),
+            "n_failed": len(self.failed_trials),
+            "n_skipped": len(self.skipped_trials),
+            "status_counts": status_counts,
+            "best_score": self.best_score,
+            "score_mean": float(scores.mean()) if not scores.empty else None,
+            "score_std": float(scores.std()) if len(scores) > 1 else None,
+            "score_min": float(scores.min()) if not scores.empty else None,
+            "score_max": float(scores.max()) if not scores.empty else None,
+        }
 
     def to_frame(self) -> pd.DataFrame:
         rows = []
@@ -66,6 +94,7 @@ class CalibrationResult:
             "best_metrics": self.best_metrics,
             "direction": self.direction,
             "optimizer": self.optimizer,
+            "metadata": self.metadata,
             "trials": [
                 {
                     "params": trial.params,
@@ -107,6 +136,7 @@ class CalibrationResult:
             ],
             direction=payload["direction"],
             optimizer=payload["optimizer"],
+            metadata=payload.get("metadata", {}),
         )
 
     def report(self, top_n: int = 5) -> str:
@@ -119,6 +149,7 @@ class CalibrationResult:
             f"Best params: `{self.best_params}`",
             f"Trials: `{self.n_trials}`",
             f"Failed trials: `{len(self.failed_trials)}`",
+            f"Skipped trials: `{len(self.skipped_trials)}`",
             "",
             "## Best Metrics",
         ]
@@ -128,9 +159,17 @@ class CalibrationResult:
         else:
             lines.append("- none")
 
+        lines += ["", "## Summary"]
+        for key, value in self.summary().items():
+            lines.append(f"- {key}: {value}")
+
+        if self.metadata:
+            lines += ["", "## Metadata"]
+            for key, value in self.metadata.items():
+                lines.append(f"- {key}: {value}")
+
         lines += ["", f"## Top {top_n} Trials"]
-        ranked = sorted(self.trials, key=lambda trial: trial.score, reverse=self.direction == "maximize")
-        for trial in ranked[:top_n]:
+        for trial in self.top_trials(top_n):
             lines.append(f"- score={trial.score:.6f}, params={trial.params}, status={trial.status}")
         return "\n".join(lines)
 
@@ -151,6 +190,8 @@ class CalibrationEngine:
         max_evals: int = 100,
         direction: ObjectiveDirection = "maximize",
         fail_score: float | None = None,
+        constraints: list[ConstraintFn] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CalibrationResult:
         if direction not in {"maximize", "minimize"}:
             raise ValueError("direction must be 'maximize' or 'minimize'")
@@ -160,16 +201,28 @@ class CalibrationEngine:
         default_fail_score = -np.inf if direction == "maximize" else np.inf
         fail_score = default_fail_score if fail_score is None else fail_score
         trials: list[CalibrationTrial] = []
+        constraints = constraints or []
 
         for params in candidate_stream(param_space, optimizer=optimizer, max_evals=max_evals, seed=self.seed):
+            params = dict(params)
+            if not all(constraint(params) for constraint in constraints):
+                trials.append(
+                    CalibrationTrial(
+                        params=params,
+                        score=float(fail_score),
+                        status="skipped",
+                        error="parameter constraints not satisfied",
+                    )
+                )
+                continue
             try:
-                raw = objective(dict(params), data)
+                raw = objective(params, data)
                 score, metrics = _parse_objective_output(raw)
-                trials.append(CalibrationTrial(params=dict(params), score=score, metrics=metrics))
+                trials.append(CalibrationTrial(params=params, score=score, metrics=metrics))
             except Exception as exc:
                 trials.append(
                     CalibrationTrial(
-                        params=dict(params),
+                        params=params,
                         score=float(fail_score),
                         status="error",
                         error=str(exc),
@@ -191,6 +244,14 @@ class CalibrationEngine:
             trials=trials,
             direction=direction,
             optimizer=optimizer,
+            metadata={
+                "seed": self.seed,
+                "optimizer": optimizer,
+                "max_evals": max_evals,
+                "python_version": sys.version.split()[0],
+                "platform": platform.platform(),
+                **(metadata or {}),
+            },
         )
 
 
@@ -203,6 +264,8 @@ def calibrate_model(
     max_evals: int = 100,
     direction: ObjectiveDirection = "maximize",
     seed: int = 42,
+    constraints: list[ConstraintFn] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> CalibrationResult:
     return CalibrationEngine(seed=seed).calibrate(
         objective,
@@ -211,6 +274,8 @@ def calibrate_model(
         optimizer=optimizer,
         max_evals=max_evals,
         direction=direction,
+        constraints=constraints,
+        metadata=metadata,
     )
 
 
