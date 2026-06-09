@@ -95,6 +95,7 @@ run = run_model_file("models/example_model.py")
 
 Loads a local trusted model file and writes:
 
+- `manifest.json`
 - `result.json`
 - `trials.csv`
 - `report.md`

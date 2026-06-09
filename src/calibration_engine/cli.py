@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -7,11 +8,11 @@ from .engine import CalibrationEngine
 from .model_runner import run_model_file
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Run local offline parameter calibration.")
     parser.add_argument("model", nargs="?", help="Path to a local model file, for example models/example_model.py")
     parser.add_argument("--output-dir", default="runs", help="Directory where run artifacts are written")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.model:
         run = run_model_file(args.model, output_dir=args.output_dir)

@@ -59,6 +59,7 @@ runs/
       result.json
       trials.csv
       report.md
+      manifest.json
 ```
 
 Run a model file:
@@ -140,6 +141,8 @@ See `docs/RESEARCH_NOTES.md` for the paper-backed design notes behind the optimi
 For a paper-style project explanation, see `docs/PAPER.md`.
 
 For API reference, see `docs/API.md`.
+
+For model-file workflow details, see `docs/MODEL_FILE_GUIDE.md`.
 
 For a Jupyter walkthrough, open:
 
