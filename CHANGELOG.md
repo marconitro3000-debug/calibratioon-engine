@@ -8,4 +8,5 @@
 - Added paper-style documentation and Jupyter notebook demo.
 - Added local `models/` to `runs/` workflow.
 - Added callbacks for trial start, trial end and early stopping.
+- Added `successive_halving` optimizer with resource metadata.
 - Hardened the project into an offline-only generic calibration engine.

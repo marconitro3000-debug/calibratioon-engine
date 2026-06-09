@@ -23,6 +23,10 @@ result = CalibrationEngine(seed=42).calibrate(
     on_trial_start=None,
     on_trial_end=None,
     should_stop=None,
+    min_resource=1,
+    max_resource=None,
+    reduction_factor=3,
+    resource_name="_resource",
 )
 ```
 
@@ -43,6 +47,17 @@ space = SearchSpace.from_dict({"depth": [2, 3, 4], "rate": (0.001, 0.1)})
 ```
 
 `SearchSpace` validates candidate values and bounded ranges, computes `grid_size`, and serializes a manifest into result metadata.
+
+## Optimizers
+
+Supported optimizers:
+
+- `grid`
+- `random`
+- `auto`
+- `successive_halving`
+
+`successive_halving` evaluates many candidates with a small budget, promotes the strongest candidates, and reevaluates them with larger budgets. The current budget is injected into params using `resource_name`, defaulting to `_resource`.
 
 ## `CalibrationResult`
 

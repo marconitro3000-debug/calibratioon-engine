@@ -72,6 +72,7 @@ The current version includes:
 - `grid`: deterministic enumeration of the grid representation;
 - `random`: seeded random sampling;
 - `auto`: grid for small spaces, random for larger spaces.
+- `successive_halving`: budget-aware candidate promotion over increasing resources.
 
 This follows a conservative research workflow: simple baselines first, then more advanced optimizers behind the same result contract.
 
@@ -108,19 +109,17 @@ The notebook `notebooks/calibration_engine_research_demo.ipynb` demonstrates a s
 ## 8. Limitations
 
 - No parallel execution yet.
-- No budget-aware multi-fidelity optimizer yet.
 - No Bayesian optimizer yet.
 - Continuous ranges use a compact grid approximation for grid search.
 - Objective functions are user code; the library records objective failures but does not sandbox them.
 
 ## 9. Roadmap
 
-1. Successive halving optimizer.
-2. Callback hooks for logging and early stopping.
-3. Experiment manifest files.
-4. Parallel local execution.
-5. Typed parameter distributions.
-6. More examples for model calibration without adding heavy dependencies.
+1. Callback hooks for richer logging.
+2. Experiment manifest files.
+3. Parallel local execution.
+4. Typed parameter distributions.
+5. More examples for model calibration without adding heavy dependencies.
 
 ## 10. Security
 

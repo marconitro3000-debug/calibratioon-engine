@@ -12,7 +12,7 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-from .optimizers import candidate_stream
+from .optimizers import candidate_stream, expand_grid, sample_random
 from .search_space import SearchSpace
 
 ObjectiveDirection = Literal["maximize", "minimize"]
@@ -201,6 +201,10 @@ class CalibrationEngine:
         on_trial_start: TrialStartCallback | None = None,
         on_trial_end: TrialEndCallback | None = None,
         should_stop: StopCallback | None = None,
+        min_resource: int = 1,
+        max_resource: int | None = None,
+        reduction_factor: int = 3,
+        resource_name: str = "_resource",
     ) -> CalibrationResult:
         if direction not in {"maximize", "minimize"}:
             raise ValueError("direction must be 'maximize' or 'minimize'")
@@ -212,40 +216,40 @@ class CalibrationEngine:
         fail_score = default_fail_score if fail_score is None else fail_score
         trials: list[CalibrationTrial] = []
         constraints = constraints or []
+        max_resource = max_resource or max(1, min_resource)
 
-        for params in candidate_stream(search_space, optimizer=optimizer, max_evals=max_evals, seed=self.seed):
-            params = dict(params)
-            if not all(constraint(params) for constraint in constraints):
-                trial = CalibrationTrial(
-                    params=params,
-                    score=float(fail_score),
-                    status="skipped",
-                    error="parameter constraints not satisfied",
+        if optimizer == "successive_halving":
+            trials = self._run_successive_halving(
+                objective=objective,
+                search_space=search_space,
+                data=data,
+                max_evals=max_evals,
+                direction=direction,
+                fail_score=float(fail_score),
+                constraints=constraints,
+                on_trial_start=on_trial_start,
+                on_trial_end=on_trial_end,
+                should_stop=should_stop,
+                min_resource=min_resource,
+                max_resource=max_resource,
+                reduction_factor=reduction_factor,
+                resource_name=resource_name,
+            )
+        else:
+            for params in candidate_stream(search_space, optimizer=optimizer, max_evals=max_evals, seed=self.seed):
+                trial = _evaluate_trial(
+                    objective=objective,
+                    params=dict(params),
+                    data=data,
+                    fail_score=float(fail_score),
+                    constraints=constraints,
+                    on_trial_start=on_trial_start,
                 )
                 trials.append(trial)
                 if on_trial_end is not None:
                     on_trial_end(trial)
                 if should_stop is not None and should_stop(trials):
                     break
-                continue
-            try:
-                if on_trial_start is not None:
-                    on_trial_start(params)
-                raw = objective(params, data)
-                score, metrics = _parse_objective_output(raw)
-                trial = CalibrationTrial(params=params, score=score, metrics=metrics)
-            except Exception as exc:
-                trial = CalibrationTrial(
-                    params=params,
-                    score=float(fail_score),
-                    status="error",
-                    error=str(exc),
-                )
-            trials.append(trial)
-            if on_trial_end is not None:
-                on_trial_end(trial)
-            if should_stop is not None and should_stop(trials):
-                break
 
         if not trials:
             raise ValueError("no calibration trials evaluated")
@@ -256,7 +260,7 @@ class CalibrationEngine:
         best = sorted(candidates, key=lambda trial: trial.score, reverse=reverse)[0]
 
         return CalibrationResult(
-            best_params=best.params,
+            best_params={key: value for key, value in best.params.items() if key != resource_name},
             best_score=best.score,
             best_metrics=best.metrics,
             trials=trials,
@@ -266,12 +270,80 @@ class CalibrationEngine:
                 "seed": self.seed,
                 "optimizer": optimizer,
                 "max_evals": max_evals,
+                "min_resource": min_resource if optimizer == "successive_halving" else None,
+                "max_resource": max_resource if optimizer == "successive_halving" else None,
+                "reduction_factor": reduction_factor if optimizer == "successive_halving" else None,
+                "resource_name": resource_name if optimizer == "successive_halving" else None,
                 "search_space": search_space.to_dict(),
                 "python_version": sys.version.split()[0],
                 "platform": platform.platform(),
                 **(metadata or {}),
             },
         )
+
+    def _run_successive_halving(
+        self,
+        *,
+        objective: ObjectiveFn,
+        search_space: SearchSpace,
+        data: Any,
+        max_evals: int,
+        direction: ObjectiveDirection,
+        fail_score: float,
+        constraints: list[ConstraintFn],
+        on_trial_start: TrialStartCallback | None,
+        on_trial_end: TrialEndCallback | None,
+        should_stop: StopCallback | None,
+        min_resource: int,
+        max_resource: int,
+        reduction_factor: int,
+        resource_name: str,
+    ) -> list[CalibrationTrial]:
+        if min_resource <= 0:
+            raise ValueError("min_resource must be positive")
+        if max_resource < min_resource:
+            raise ValueError("max_resource must be >= min_resource")
+        if reduction_factor < 2:
+            raise ValueError("reduction_factor must be >= 2")
+
+        if search_space.grid_size <= max_evals:
+            candidates = list(expand_grid(search_space))
+        else:
+            candidates = list(sample_random(search_space, max_evals, seed=self.seed))
+
+        trials: list[CalibrationTrial] = []
+        resource = min_resource
+        active = candidates
+        while active:
+            rung_trials = []
+            for base_params in active:
+                params = dict(base_params)
+                params[resource_name] = resource
+                trial = _evaluate_trial(
+                    objective=objective,
+                    params=params,
+                    data=data,
+                    fail_score=fail_score,
+                    constraints=constraints,
+                    on_trial_start=on_trial_start,
+                )
+                trials.append(trial)
+                rung_trials.append(trial)
+                if on_trial_end is not None:
+                    on_trial_end(trial)
+                if should_stop is not None and should_stop(trials):
+                    return trials
+
+            ok_trials = [trial for trial in rung_trials if trial.status == "ok"]
+            if resource >= max_resource or len(ok_trials) <= 1:
+                break
+
+            keep = max(1, len(ok_trials) // reduction_factor)
+            reverse = direction == "maximize"
+            promoted = sorted(ok_trials, key=lambda trial: trial.score, reverse=reverse)[:keep]
+            active = [{key: value for key, value in trial.params.items() if key != resource_name} for trial in promoted]
+            resource = min(max_resource, resource * reduction_factor)
+        return trials
 
 
 def calibrate_model(
@@ -288,6 +360,10 @@ def calibrate_model(
     on_trial_start: TrialStartCallback | None = None,
     on_trial_end: TrialEndCallback | None = None,
     should_stop: StopCallback | None = None,
+    min_resource: int = 1,
+    max_resource: int | None = None,
+    reduction_factor: int = 3,
+    resource_name: str = "_resource",
 ) -> CalibrationResult:
     return CalibrationEngine(seed=seed).calibrate(
         objective,
@@ -301,6 +377,10 @@ def calibrate_model(
         on_trial_start=on_trial_start,
         on_trial_end=on_trial_end,
         should_stop=should_stop,
+        min_resource=min_resource,
+        max_resource=max_resource,
+        reduction_factor=reduction_factor,
+        resource_name=resource_name,
     )
 
 
@@ -316,3 +396,34 @@ def _parse_objective_output(raw: float | dict[str, Any]) -> tuple[float, dict[st
     if not np.isfinite(score):
         raise ValueError("objective score must be finite")
     return score, metrics
+
+
+def _evaluate_trial(
+    *,
+    objective: ObjectiveFn,
+    params: dict[str, Any],
+    data: Any,
+    fail_score: float,
+    constraints: list[ConstraintFn],
+    on_trial_start: TrialStartCallback | None,
+) -> CalibrationTrial:
+    if not all(constraint(params) for constraint in constraints):
+        return CalibrationTrial(
+            params=params,
+            score=float(fail_score),
+            status="skipped",
+            error="parameter constraints not satisfied",
+        )
+    try:
+        if on_trial_start is not None:
+            on_trial_start(params)
+        raw = objective(params, data)
+        score, metrics = _parse_objective_output(raw)
+        return CalibrationTrial(params=params, score=score, metrics=metrics)
+    except Exception as exc:
+        return CalibrationTrial(
+            params=params,
+            score=float(fail_score),
+            status="error",
+            error=str(exc),
+        )

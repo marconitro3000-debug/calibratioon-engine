@@ -145,3 +145,31 @@ def test_callbacks_can_observe_and_stop_trials():
     assert started == [1, 2]
     assert ended == [1.0, 2.0]
     assert result.n_trials == 2
+
+
+def test_successive_halving_promotes_best_candidates():
+    seen_resources = []
+
+    def objective(params, data):
+        seen_resources.append(params["_resource"])
+        score = -((params["x"] - 4) ** 2) + params["_resource"] * 0.001
+        return {"score": score, "resource": params["_resource"]}
+
+    result = CalibrationEngine(seed=1).calibrate(
+        objective,
+        {"x": [1, 2, 3, 4, 5, 6]},
+        optimizer="successive_halving",
+        max_evals=6,
+        min_resource=1,
+        max_resource=9,
+        reduction_factor=3,
+    )
+
+    assert result.best_params == {"x": 4}
+    assert 1 in seen_resources
+    assert 3 in seen_resources
+    assert 9 in seen_resources
+    assert result.metadata["min_resource"] == 1
+    assert result.metadata["max_resource"] == 9
+    assert result.metadata["resource_name"] == "_resource"
+    assert "_resource" not in result.best_params

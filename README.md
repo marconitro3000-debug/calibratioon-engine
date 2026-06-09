@@ -95,7 +95,7 @@ Optional fields: `load_data`, `DATA`, `SEED`, `OPTIMIZER`, `MAX_EVALS`, `DIRECTI
 - `CalibrationResult`: best params, best score, metrics, all trials.
 - `CalibrationTrial`: one evaluated parameter set.
 - `SearchSpace`: explicit, validated parameter-space manifest.
-- Optimizers: `grid`, `random`, `auto`.
+- Optimizers: `grid`, `random`, `auto`, `successive_halving`.
 - Parameter constraints via `constraints=[...]`.
 - Reproducibility metadata: seed, optimizer, Python version, platform and user metadata.
 - Trial summaries via `summary()` and ranked candidates via `top_trials()`.
@@ -117,6 +117,21 @@ result = CalibrationEngine(seed=42).calibrate(
 ```
 
 The result records skipped trials, failed trials, score distribution and metadata so runs can be audited later.
+
+Budget-aware calibration:
+
+```python
+result = CalibrationEngine(seed=42).calibrate(
+    objective,
+    param_space={"x": [1, 2, 3, 4, 5, 6]},
+    optimizer="successive_halving",
+    min_resource=1,
+    max_resource=9,
+    reduction_factor=3,
+)
+```
+
+For `successive_halving`, each objective call receives the current budget in `params["_resource"]`.
 
 ## Research Notes
 

@@ -67,8 +67,7 @@ That is why `CalibrationResult` records metadata, trial status, JSON persistence
 ## Near-Term Roadmap
 
 1. Add deterministic stratified random sampling for mixed discrete/continuous spaces.
-2. Add successive halving as the first budget-aware optimizer.
-3. Add examples for scikit-learn-style models without requiring scikit-learn as a dependency.
+2. Add examples for scikit-learn-style models without requiring scikit-learn as a dependency.
 
 ## Implemented Research Infrastructure
 
@@ -76,4 +75,5 @@ That is why `CalibrationResult` records metadata, trial status, JSON persistence
 - Local `models/` to `runs/` workflow.
 - Trial-level JSON and CSV artifacts.
 - Callback hooks: `on_trial_start`, `on_trial_end`, `should_stop`.
+- Budget-aware `successive_halving` optimizer.
 - Run metadata containing seed, optimizer, evaluation budget, Python version and platform.
