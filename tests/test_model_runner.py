@@ -48,3 +48,14 @@ def objective(params, data):
 
     assert "Run saved to:" in output
     assert "Best params" in output
+
+
+def test_experimental_model_runs(tmp_path):
+    run = run_model_file(
+        "models/experimental/freeze_thaw_curve.py",
+        output_dir=tmp_path / "runs",
+    )
+
+    assert run.result.ok_trials
+    assert run.result.metadata["experiment"] == "freeze-thaw-curve-synthetic"
+    assert (run.run_dir / "manifest.json").exists()

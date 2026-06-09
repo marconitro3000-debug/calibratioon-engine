@@ -10,4 +10,5 @@
 - Added per-run `manifest.json` artifacts.
 - Added callbacks for trial start, trial end and early stopping.
 - Added `successive_halving` optimizer with resource metadata.
+- Added paper-inspired synthetic experimental models under `models/experimental/`.
 - Hardened the project into an offline-only generic calibration engine.

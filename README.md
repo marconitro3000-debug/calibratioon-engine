@@ -144,6 +144,8 @@ For API reference, see `docs/API.md`.
 
 For model-file workflow details, see `docs/MODEL_FILE_GUIDE.md`.
 
+For paper-inspired synthetic experimental models, see `docs/EXPERIMENTAL_MODELS.md`.
+
 For a Jupyter walkthrough, open:
 
 ```bash

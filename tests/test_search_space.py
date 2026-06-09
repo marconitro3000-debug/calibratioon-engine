@@ -25,7 +25,14 @@ def test_optimizers_accept_search_space():
     space = SearchSpace.from_dict({"a": [1, 2], "b": [3]})
 
     assert list(expand_grid(space)) == [{"a": 1, "b": 3}, {"a": 2, "b": 3}]
-    assert len(list(sample_random(space, 3, seed=1))) == 3
+    assert len(list(sample_random(space, 3, seed=1))) == 2
+
+
+def test_random_sampling_avoids_duplicates_when_possible():
+    samples = list(sample_random({"a": [1, 2], "b": [3, 4]}, 4, seed=2))
+
+    assert len(samples) == 4
+    assert len({tuple(sorted(sample.items())) for sample in samples}) == 4
 
 
 def test_engine_records_search_space_manifest():

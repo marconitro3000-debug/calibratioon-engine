@@ -17,13 +17,23 @@ def expand_grid(param_space: dict[str, Any] | SearchSpace) -> Iterator[dict[str,
 def sample_random(param_space: dict[str, Any] | SearchSpace, n: int, seed: int = 42) -> Iterator[dict[str, Any]]:
     space = SearchSpace.from_dict(param_space)
     rng = random.Random(seed)
-    for _ in range(int(n)):
+    seen = set()
+    attempts = 0
+    yielded = 0
+    max_attempts = max(int(n) * 20, 100)
+    while yielded < int(n) and attempts < max_attempts:
+        attempts += 1
         params = {}
         for spec in space.parameters:
             if spec.bounds is not None:
                 params[spec.name] = rng.uniform(spec.bounds[0], spec.bounds[1])
             else:
                 params[spec.name] = rng.choice(list(spec.values or ()))
+        key = tuple(sorted(params.items()))
+        if key in seen:
+            continue
+        seen.add(key)
+        yielded += 1
         yield params
 
 
