@@ -80,6 +80,20 @@ The result records skipped trials, failed trials, score distribution and metadat
 
 See `docs/RESEARCH_NOTES.md` for the paper-backed design notes behind the optimizer choices, reproducibility metadata and future roadmap.
 
+For a paper-style project explanation, see `docs/PAPER.md`.
+
+For a Jupyter walkthrough, open:
+
+```bash
+jupyter notebook notebooks/calibration_engine_research_demo.ipynb
+```
+
+Install notebook support only when needed:
+
+```bash
+python -m pip install -e ".[notebook]"
+```
+
 ## Parameter Spaces
 
 Discrete values:
