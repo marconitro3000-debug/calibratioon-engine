@@ -75,6 +75,10 @@ result = CalibrationEngine(seed=42).calibrate(
 
 The result records skipped trials, failed trials, score distribution and metadata so runs can be audited later.
 
+## Research Notes
+
+See `docs/RESEARCH_NOTES.md` for the paper-backed design notes behind the optimizer choices, reproducibility metadata and future roadmap.
+
 ## Parameter Spaces
 
 Discrete values:
