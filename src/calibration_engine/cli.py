@@ -1,10 +1,24 @@
+import argparse
+
 import numpy as np
 import pandas as pd
 
 from .engine import CalibrationEngine
+from .model_runner import run_model_file
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Run local offline parameter calibration.")
+    parser.add_argument("model", nargs="?", help="Path to a local model file, for example models/example_model.py")
+    parser.add_argument("--output-dir", default="runs", help="Directory where run artifacts are written")
+    args = parser.parse_args()
+
+    if args.model:
+        run = run_model_file(args.model, output_dir=args.output_dir)
+        print(f"Run saved to: {run.run_dir}")
+        print(run.result.report(top_n=3))
+        return
+
     x = np.linspace(0, 10, 80)
     y = 2.5 * x + 4.0
     data = pd.DataFrame({"x": x, "y": y})

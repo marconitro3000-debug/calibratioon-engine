@@ -46,6 +46,48 @@ result.save_json("calibration_result.json")
 result.save_csv("calibration_trials.csv")
 ```
 
+## Simple Project Layout
+
+For day-to-day work, put model definitions in `models/` and let the engine write runs to `runs/`:
+
+```text
+models/
+  example_model.py
+runs/
+  example_model/
+    20260609T120000Z/
+      result.json
+      trials.csv
+      report.md
+```
+
+Run a model file:
+
+```bash
+calibration-engine models/example_model.py
+```
+
+or from Python:
+
+```python
+from calibration_engine import run_model_file
+
+run = run_model_file("models/example_model.py")
+print(run.run_dir)
+print(run.result.best_params)
+```
+
+A model file defines:
+
+```python
+PARAM_SPACE = {"x": [1, 2, 3]}
+
+def objective(params, data):
+    return params["x"]
+```
+
+Optional fields: `load_data`, `DATA`, `SEED`, `OPTIMIZER`, `MAX_EVALS`, `DIRECTION`, `CONSTRAINTS`, `METADATA`.
+
 ## What It Provides
 
 - `CalibrationEngine`: reusable calibration runner.
@@ -81,6 +123,8 @@ The result records skipped trials, failed trials, score distribution and metadat
 See `docs/RESEARCH_NOTES.md` for the paper-backed design notes behind the optimizer choices, reproducibility metadata and future roadmap.
 
 For a paper-style project explanation, see `docs/PAPER.md`.
+
+For API reference, see `docs/API.md`.
 
 For a Jupyter walkthrough, open:
 

@@ -18,6 +18,7 @@ from .search_space import SearchSpace
 ObjectiveDirection = Literal["maximize", "minimize"]
 ObjectiveFn = Callable[[dict[str, Any], Any], float | dict[str, Any]]
 ConstraintFn = Callable[[dict[str, Any]], bool]
+TrialStartCallback = Callable[[dict[str, Any]], None]
 
 
 @dataclass
@@ -27,6 +28,10 @@ class CalibrationTrial:
     metrics: dict[str, Any] = field(default_factory=dict)
     status: str = "ok"
     error: str | None = None
+
+
+TrialEndCallback = Callable[[CalibrationTrial], None]
+StopCallback = Callable[[list[CalibrationTrial]], bool]
 
 
 @dataclass
@@ -193,9 +198,14 @@ class CalibrationEngine:
         fail_score: float | None = None,
         constraints: list[ConstraintFn] | None = None,
         metadata: dict[str, Any] | None = None,
+        on_trial_start: TrialStartCallback | None = None,
+        on_trial_end: TrialEndCallback | None = None,
+        should_stop: StopCallback | None = None,
     ) -> CalibrationResult:
         if direction not in {"maximize", "minimize"}:
             raise ValueError("direction must be 'maximize' or 'minimize'")
+        if max_evals <= 0:
+            raise ValueError("max_evals must be positive")
         search_space = SearchSpace.from_dict(param_space)
 
         default_fail_score = -np.inf if direction == "maximize" else np.inf
@@ -206,28 +216,36 @@ class CalibrationEngine:
         for params in candidate_stream(search_space, optimizer=optimizer, max_evals=max_evals, seed=self.seed):
             params = dict(params)
             if not all(constraint(params) for constraint in constraints):
-                trials.append(
-                    CalibrationTrial(
-                        params=params,
-                        score=float(fail_score),
-                        status="skipped",
-                        error="parameter constraints not satisfied",
-                    )
+                trial = CalibrationTrial(
+                    params=params,
+                    score=float(fail_score),
+                    status="skipped",
+                    error="parameter constraints not satisfied",
                 )
+                trials.append(trial)
+                if on_trial_end is not None:
+                    on_trial_end(trial)
+                if should_stop is not None and should_stop(trials):
+                    break
                 continue
             try:
+                if on_trial_start is not None:
+                    on_trial_start(params)
                 raw = objective(params, data)
                 score, metrics = _parse_objective_output(raw)
-                trials.append(CalibrationTrial(params=params, score=score, metrics=metrics))
+                trial = CalibrationTrial(params=params, score=score, metrics=metrics)
             except Exception as exc:
-                trials.append(
-                    CalibrationTrial(
-                        params=params,
-                        score=float(fail_score),
-                        status="error",
-                        error=str(exc),
-                    )
+                trial = CalibrationTrial(
+                    params=params,
+                    score=float(fail_score),
+                    status="error",
+                    error=str(exc),
                 )
+            trials.append(trial)
+            if on_trial_end is not None:
+                on_trial_end(trial)
+            if should_stop is not None and should_stop(trials):
+                break
 
         if not trials:
             raise ValueError("no calibration trials evaluated")
@@ -267,6 +285,9 @@ def calibrate_model(
     seed: int = 42,
     constraints: list[ConstraintFn] | None = None,
     metadata: dict[str, Any] | None = None,
+    on_trial_start: TrialStartCallback | None = None,
+    on_trial_end: TrialEndCallback | None = None,
+    should_stop: StopCallback | None = None,
 ) -> CalibrationResult:
     return CalibrationEngine(seed=seed).calibrate(
         objective,
@@ -277,6 +298,9 @@ def calibrate_model(
         direction=direction,
         constraints=constraints,
         metadata=metadata,
+        on_trial_start=on_trial_start,
+        on_trial_end=on_trial_end,
+        should_stop=should_stop,
     )
 
 
@@ -285,5 +309,10 @@ def _parse_objective_output(raw: float | dict[str, Any]) -> tuple[float, dict[st
         if "score" not in raw:
             raise ValueError("objective dict output must include a 'score' key")
         metrics = {key: value for key, value in raw.items() if key != "score"}
-        return float(raw["score"]), metrics
-    return float(raw), {}
+        score = float(raw["score"])
+    else:
+        score = float(raw)
+        metrics = {}
+    if not np.isfinite(score):
+        raise ValueError("objective score must be finite")
+    return score, metrics

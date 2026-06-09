@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from calibration_engine import CalibrationEngine, CalibrationResult, calibrate_model
 
@@ -101,3 +102,46 @@ def test_calibration_supports_constraints_and_metadata():
     assert result.metadata["experiment"] == "constraint-test"
     assert result.summary()["n_skipped"] == 3
     assert result.top_trials(1)[0].score == 6.0
+
+
+def test_calibration_rejects_invalid_budget():
+    with pytest.raises(ValueError):
+        CalibrationEngine().calibrate(lambda params, data: 1.0, {"x": [1]}, max_evals=0)
+
+
+def test_non_finite_scores_are_recorded_as_failed_trials():
+    result = CalibrationEngine().calibrate(lambda params, data: np.nan, {"x": [1]}, optimizer="grid")
+
+    assert result.failed_trials
+    assert result.failed_trials[0].status == "error"
+
+
+def test_all_constraints_skipped_still_returns_auditable_result():
+    result = CalibrationEngine().calibrate(
+        lambda params, data: params["x"],
+        {"x": [1, 2]},
+        constraints=[lambda params: False],
+        optimizer="grid",
+    )
+
+    assert len(result.ok_trials) == 0
+    assert len(result.skipped_trials) == 2
+    assert result.best_params == {"x": 1}
+
+
+def test_callbacks_can_observe_and_stop_trials():
+    started = []
+    ended = []
+
+    result = CalibrationEngine().calibrate(
+        lambda params, data: params["x"],
+        {"x": [1, 2, 3]},
+        optimizer="grid",
+        on_trial_start=lambda params: started.append(params["x"]),
+        on_trial_end=lambda trial: ended.append(trial.score),
+        should_stop=lambda trials: len(trials) == 2,
+    )
+
+    assert started == [1, 2]
+    assert ended == [1.0, 2.0]
+    assert result.n_trials == 2

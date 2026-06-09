@@ -15,3 +15,5 @@ It does not:
 Inputs are local Python objects passed by your own code. The library runs only when you import it and call it from your own Python process.
 
 The project intentionally avoids networking, credential handling and command execution.
+
+Model files under `models/` are local Python code. Only run model files you wrote or trust.
